@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <title>petit-dom Hello example</title>
+</head>
+
+<body>
+
+  <script src="../../dist/petit-dom.dev.js"></script>
+  <script>
+    const { h, mount, patch, unmount } = petitDom;
+
+
+    function Counter(update) {
+      let state = 0
+
+      function onclick() {
+        state++
+        update()
+      }
+
+      return function renderCounter(props, content) {
+        return h('div', null,
+          h('h1', null, `Count ${state}`),
+          h('button', { onclick }, "+")
+        )
+      }
+    }
+
+    Counter._closure_ = true
+
+
+    var vnode = h('div', null,
+      h(Counter, { count: 0 })
+    )
+
+    document.body.appendChild(mount(vnode));
+  </script>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-import { isArray, isComponent, findK, indexOf } from "./utils";
+import { isArray, isComponent, findK, indexOf, isClosure } from "./utils";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const DELAYED_PROPS = {
@@ -52,9 +52,20 @@ export function mount(c) {
     } else if (isComponent(type)) {
       node = type.mount(props, content);
     } else if (typeof type === "function") {
+      var instance;
       if (isComponent(type.prototype)) {
-        var instance = new type(props, content);
+        instance = new type(props, content);
         node = instance.mount(props, content);
+        c._data = instance;
+      } else if (isClosure(type)) {
+        instance = type(() => {
+          var { vnode: oldVnode, props, content } = instance._data;
+          instance._data.vnode = instance(props, content);
+          patch(instance._data.vnode, oldVnode);
+        });
+        vnode = instance(props, content);
+        node = mount(vnode);
+        instance._data = { vnode, props, content };
         c._data = instance;
       } else {
         var vnode = type(props, content);
@@ -193,8 +204,9 @@ export function patch(newch, oldch, parent) {
         oldch.content
       );
     } else if (typeof type === "function") {
+      var instance;
       if (isComponent(type.prototype)) {
-        var instance = oldch._data;
+        instance = oldch._data;
         instance.patch(
           childNode,
           newch.props,
@@ -203,6 +215,11 @@ export function patch(newch, oldch, parent) {
           oldch.content
         );
         newch._data = instance;
+      } else if (typeof oldch._data === "function") {
+        instance = oldch._data;
+        var oldVnode = instance._vnode;
+        instance._vnode = instance(newch.props, newch.content);
+        childNode = patch(instance._vnode, oldVnode);
       } else {
         var shouldUpdateFn = type.shouldUpdate || defShouldUpdate;
         if (
